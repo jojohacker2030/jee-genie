@@ -20,6 +20,8 @@
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
+img{max-width:100%;height:auto}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 body{margin:0;color:var(--text);font:14px/1.55 var(--sans);background:var(--bg);min-height:100vh;-webkit-font-smoothing:antialiased;
   background-image:
    radial-gradient(900px 500px at 12% -8%,rgba(217,184,120,.10),transparent 60%),
@@ -457,11 +459,28 @@ function renderResources(){document.getElementById("resourceMap").innerHTML=Obje
   g.innerHTML=list.length?list.map(r=>`<div class="res-card"><span class="pill" style="align-self:flex-start">${label(r.subject)}</span><div class="t">${esc(r.title)}</div>${r.url?`<a href="${escAttr(/^https?:\/\//i.test(r.url)?r.url:"https://"+r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a>`:""}${r.note?`<div class="n">${esc(r.note)}</div>`:""}<div class="foot"><span class="muted"></span><button class="btn danger sm" data-rdel="${r.id}">Remove</button></div></div>`).join(""):"<div class='empty' style='grid-column:1/-1'>Your library is empty. Add books, playlists and notes above.</div>";
   g.querySelectorAll("[data-rdel]").forEach(b=>b.onclick=()=>{state.resources=state.resources.filter(x=>x.id!==b.dataset.rdel);save();renderResources()})}
 
-function renderAll(){renderTop();renderOverview();renderSyllabusTotals();renderChapters();renderMocks();renderReview();renderResources()}
+let chaptersRendered=false;
+function renderAll(){
+  renderTop();renderOverview();renderSyllabusTotals();renderMocks();renderReview();renderResources();
+  const chapterView=document.getElementById("chapters");
+  if(chapterView && chapterView.classList.contains("active")){
+    renderChapters();chaptersRendered=true;
+  }else{
+    chaptersRendered=false;
+    const list=document.getElementById("chapterList");
+    if(list)list.innerHTML="<div class='empty'>Chapter details load when you open this tab.</div>";
+  }
+}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}function escAttr(s){return esc(s)}
 
-document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".view").forEach(x=>x.classList.toggle("active",x.id===b.dataset.view));if(b.dataset.view==="chapters")renderChapters()});
-["subjectFilter","sortFilter","chapterSearch"].forEach(id=>document.getElementById(id).addEventListener(id==="chapterSearch"?"input":"change",renderChapters));
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));
+  document.querySelectorAll(".view").forEach(x=>x.classList.toggle("active",x.id===b.dataset.view));
+  if(b.dataset.view==="chapters"&&!chaptersRendered){renderChapters();chaptersRendered=true}
+});
+["subjectFilter","sortFilter","chapterSearch"].forEach(id=>document.getElementById(id).addEventListener(id==="chapterSearch"?"input":"change",()=>{
+  renderChapters();chaptersRendered=true;
+}));
 document.getElementById("saveMock").onclick=()=>{let name=document.getElementById("mockName").value.trim(),score=Number(document.getElementById("mockScore").value),max=Number(document.getElementById("mockMax").value);if(!name||!max){alert("Add a test name and max marks first.");return}state.mocks.push({id:String(Date.now()),name,exam:document.getElementById("mockExam").value,date:document.getElementById("mockDate").value,score,max,attempted:Number(document.getElementById("mockAttempted").value)||0,correct:Number(document.getElementById("mockCorrect").value)||0,notes:document.getElementById("mockNotes").value});save();["mockName","mockScore","mockMax","mockAttempted","mockCorrect","mockNotes"].forEach(id=>document.getElementById(id).value="")};
 document.getElementById("addRes").onclick=()=>{let title=document.getElementById("resTitle").value.trim();if(!title){alert("Give the resource a title.");return}(state.resources||=[]).push({id:String(Date.now()),subject:document.getElementById("resSubject").value,title,url:document.getElementById("resUrl").value.trim(),note:document.getElementById("resNote").value.trim()});["resTitle","resUrl","resNote"].forEach(id=>document.getElementById(id).value="");save();renderResources()};
 document.getElementById("resFilter").onchange=renderResources;
